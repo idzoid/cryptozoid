@@ -108,7 +108,7 @@ type ECP256KeyManager struct {
 // Example:
 //
 //	km := NewECP256KeyManager(priv)
-func NewECP256KeyManager(priv *ecdh.PrivateKey) *ECP256KeyManager {
+func NewECP256KeyManager(priv *ecdh.PrivateKey) KeyManager {
 	k := &ECP256KeyManager{
 		Priv: priv,
 	}
