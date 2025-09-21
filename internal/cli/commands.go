@@ -10,7 +10,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/idzoid/cryptozoid/ec"
+	cecdh "github.com/idzoid/cryptozoid/ecdh"
 	"github.com/idzoid/cryptozoid/symmetric"
 )
 
@@ -28,11 +28,11 @@ var validCurves = map[string]bool{
 }
 
 var keyGens = map[string]func() (*ecdh.PrivateKey, error){
-	CurveP256: ec.GenECP256PrivateKey,
+	CurveP256: cecdh.GenEcdhP256PrivateKey,
 }
 
-var keymanagerConstructors = map[string]func(priv *ecdh.PrivateKey) ec.KeyManager{
-	CurveP256: ec.NewECP256KeyManager,
+var keymanagerConstructors = map[string]func(priv *ecdh.PrivateKey) cecdh.KeyManager{
+	CurveP256: cecdh.NewEcdhP256KeyManager,
 }
 
 type EcdhCommand struct {
@@ -157,7 +157,7 @@ func (cmd *EcEncryptCommand) Execute(args []string) error {
 		return err
 	}
 
-	pk, err := ec.ECP256PemToPrivateKey(data)
+	pk, err := cecdh.EcdhP256PemToPrivateKey(data)
 	if err != nil {
 		return err
 	}

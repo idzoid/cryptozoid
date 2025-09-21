@@ -1,4 +1,4 @@
-package ec
+package ecdh
 
 import (
 	"encoding/hex"
@@ -10,12 +10,12 @@ import (
 func TestKeymanager(t *testing.T) {
 
 	t.Run("Should convert to pem and back to key", func(t *testing.T) {
-		pk, err := GenECP256PrivateKey()
+		pk, err := GenEcdhP256PrivateKey()
 
 		if err != nil {
 			t.Fatal(err)
 		}
-		km := NewECP256KeyManager(pk)
+		km := NewEcdhP256KeyManager(pk)
 		pkBytes, _ := km.PrivateKeyBytes()
 		pubBytes, _ := km.PublicKeyBytes()
 		pemPk, err := km.PrivateKeyToPem()
@@ -40,17 +40,17 @@ func TestKeymanager(t *testing.T) {
 	})
 
 	t.Run("Should generate shared secret between two parties", func(t *testing.T) {
-		p1Priv, err := GenECP256PrivateKey()
+		p1Priv, err := GenEcdhP256PrivateKey()
 		if err != nil {
 			t.Fatal(err)
 		}
-		p1Km := NewECP256KeyManager(p1Priv)
+		p1Km := NewEcdhP256KeyManager(p1Priv)
 
-		p2Priv, err := GenECP256PrivateKey()
+		p2Priv, err := GenEcdhP256PrivateKey()
 		if err != nil {
 			t.Fatal(err)
 		}
-		p2Km := NewECP256KeyManager(p2Priv)
+		p2Km := NewEcdhP256KeyManager(p2Priv)
 
 		p1Shared, err := p1Km.DeriveSharedSecret(p2Priv.PublicKey())
 		if err != nil {

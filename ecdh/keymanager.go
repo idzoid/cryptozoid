@@ -1,4 +1,4 @@
-package ec
+package ecdh
 
 import (
 	"crypto/ecdh"
@@ -58,19 +58,19 @@ func GenPrivateKey(curve ecdh.Curve) (*ecdh.PrivateKey, error) {
 	return priv, nil
 }
 
-// GenECP256PrivateKey generates a new ECDH private key using the P-256
+// GenEcdhP256PrivateKey generates a new ECDH private key using the P-256
 // elliptic curve.
 //
 // Example:
 //
-//	priv, err := GenECP256PrivateKey()
-func GenECP256PrivateKey() (*ecdh.PrivateKey, error) {
+//	priv, err := GenEcdhP256PrivateKey()
+func GenEcdhP256PrivateKey() (*ecdh.PrivateKey, error) {
 	return GenPrivateKey(ecdh.P256())
 }
 
-// ECP256PemToPrivateKey parses a PEM-encoded private key and returns an ECDH
+// EcdhP256PemToPrivateKey parses a PEM-encoded private key and returns an ECDH
 // private key.
-func ECP256PemToPrivateKey(b []byte) (*ecdh.PrivateKey, error) {
+func EcdhP256PemToPrivateKey(b []byte) (*ecdh.PrivateKey, error) {
 	block, _ := pem.Decode(b)
 	if block == nil {
 		return nil, errors.New("failed to decode PEM block")
@@ -82,9 +82,9 @@ func ECP256PemToPrivateKey(b []byte) (*ecdh.PrivateKey, error) {
 	return priv, nil
 }
 
-// ECP256PemToPublicKey parses a PEM-encoded public key and returns an ECDH public
-// key.
-func ECP256PemToPublicKey(b []byte) (*ecdh.PublicKey, error) {
+// EcdhP256PemToPublicKey parses a PEM-encoded public key and returns an ECDH
+// public key.
+func EcdhP256PemToPublicKey(b []byte) (*ecdh.PublicKey, error) {
 	block, _ := pem.Decode(b)
 	if block == nil {
 		return nil, errors.New("failed to decode PEM block")
@@ -96,33 +96,33 @@ func ECP256PemToPublicKey(b []byte) (*ecdh.PublicKey, error) {
 	return pub, nil
 }
 
-// ECP256KeyManager is a concrete KeyManager implementation for the P-256
+// EcdhP256KeyManager is a concrete KeyManager implementation for the P-256
 // elliptic curve.
-type ECP256KeyManager struct {
+type EcdhP256KeyManager struct {
 	Priv *ecdh.PrivateKey
 }
 
-// NewECP256KeyManager creates a new ECP256KeyManager using the provided
+// NewEcdhP256KeyManager creates a new Ecdh256KeyManager using the provided
 // private key.
 //
 // Example:
 //
-//	km := NewECP256KeyManager(priv)
-func NewECP256KeyManager(priv *ecdh.PrivateKey) KeyManager {
-	k := &ECP256KeyManager{
+//	km := NewEcdhP256KeyManager(priv)
+func NewEcdhP256KeyManager(priv *ecdh.PrivateKey) KeyManager {
+	k := &EcdhP256KeyManager{
 		Priv: priv,
 	}
 	return k
 }
 
 // CurveName returns the name of the elliptic curve ("P-256").
-func (k *ECP256KeyManager) CurveName() string {
+func (k *EcdhP256KeyManager) CurveName() string {
 	return "P-256"
 }
 
 // DeriveSharedSecret derives the shared secret with the given peer public key,
 // returning the SHA-256 hash of the raw shared key.
-func (k *ECP256KeyManager) DeriveSharedSecret(peerPub *ecdh.PublicKey) ([]byte, error) {
+func (k *EcdhP256KeyManager) DeriveSharedSecret(peerPub *ecdh.PublicKey) ([]byte, error) {
 	shared, err := k.Priv.ECDH(peerPub)
 	if err != nil {
 		return nil, err
@@ -133,7 +133,7 @@ func (k *ECP256KeyManager) DeriveSharedSecret(peerPub *ecdh.PublicKey) ([]byte, 
 
 // PemToPrivateKey parses a PEM-encoded private key and returns an ECDH private
 // key.
-func (k *ECP256KeyManager) PemToPrivateKey(b []byte) (*ecdh.PrivateKey, error) {
+func (k *EcdhP256KeyManager) PemToPrivateKey(b []byte) (*ecdh.PrivateKey, error) {
 	block, _ := pem.Decode(b)
 	if block == nil {
 		return nil, errors.New("failed to decode PEM block")
@@ -147,7 +147,7 @@ func (k *ECP256KeyManager) PemToPrivateKey(b []byte) (*ecdh.PrivateKey, error) {
 
 // PemToPublicKey parses a PEM-encoded public key and returns an ECDH public
 // key.
-func (k *ECP256KeyManager) PemToPublicKey(b []byte) (*ecdh.PublicKey, error) {
+func (k *EcdhP256KeyManager) PemToPublicKey(b []byte) (*ecdh.PublicKey, error) {
 	block, _ := pem.Decode(b)
 	if block == nil {
 		return nil, errors.New("failed to decode PEM block")
@@ -160,7 +160,7 @@ func (k *ECP256KeyManager) PemToPublicKey(b []byte) (*ecdh.PublicKey, error) {
 }
 
 // PrivateKeyToPem serializes the private key as PEM-encoded bytes.
-func (k *ECP256KeyManager) PrivateKeyToPem() ([]byte, error) {
+func (k *EcdhP256KeyManager) PrivateKeyToPem() ([]byte, error) {
 	b, err := k.PrivateKeyBytes()
 	if err != nil {
 		return nil, err
@@ -173,12 +173,12 @@ func (k *ECP256KeyManager) PrivateKeyToPem() ([]byte, error) {
 }
 
 // PrivateKeyBytes returns the private key in PKCS#8 DER-encoded format.
-func (k *ECP256KeyManager) PrivateKeyBytes() ([]byte, error) {
+func (k *EcdhP256KeyManager) PrivateKeyBytes() ([]byte, error) {
 	return k.Priv.Bytes(), nil
 }
 
 // PublicKeyToPem serializes the public key as PEM-encoded bytes.
-func (k *ECP256KeyManager) PublicKeyToPem() ([]byte, error) {
+func (k *EcdhP256KeyManager) PublicKeyToPem() ([]byte, error) {
 	b, err := k.PublicKeyBytes()
 	if err != nil {
 		return nil, err
@@ -191,6 +191,6 @@ func (k *ECP256KeyManager) PublicKeyToPem() ([]byte, error) {
 }
 
 // PublicKeyBytes returns the public key in PKIX DER-encoded format.
-func (k *ECP256KeyManager) PublicKeyBytes() ([]byte, error) {
+func (k *EcdhP256KeyManager) PublicKeyBytes() ([]byte, error) {
 	return k.Priv.PublicKey().Bytes(), nil
 }
