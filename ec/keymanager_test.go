@@ -1,4 +1,4 @@
-package ecdh
+package ec
 
 import (
 	"encoding/hex"
