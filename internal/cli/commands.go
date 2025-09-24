@@ -31,7 +31,7 @@ var keyGens = map[string]func() (*ecdh.PrivateKey, error){
 	CurveP256: ec.GenEcdhP256PrivateKey,
 }
 
-var keymanagerConstructors = map[string]func(priv *ecdh.PrivateKey) ec.KeyManager{
+var keymanagerConstructors = map[string]func(priv *ecdh.PrivateKey) ec.EcdhKeyManager{
 	CurveP256: ec.NewEcdhP256KeyManager,
 }
 

@@ -8,10 +8,10 @@ import (
 	"errors"
 )
 
-// KeyManager defines an interface for managing ECDH keys and operations,
+// EcdhKeyManager defines an interface for managing ECDH keys and operations,
 // including curve identification, shared secret derivation, and key
 // serialization/deserialization.
-type KeyManager interface {
+type EcdhKeyManager interface {
 
 	// CurveName returns the name of the elliptic curve being used (e.g.,
 	// "P-256").
@@ -108,7 +108,7 @@ type EcdhP256KeyManager struct {
 // Example:
 //
 //	km := NewEcdhP256KeyManager(priv)
-func NewEcdhP256KeyManager(priv *ecdh.PrivateKey) KeyManager {
+func NewEcdhP256KeyManager(priv *ecdh.PrivateKey) EcdhKeyManager {
 	k := &EcdhP256KeyManager{
 		Priv: priv,
 	}
