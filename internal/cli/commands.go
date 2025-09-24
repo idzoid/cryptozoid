@@ -3,7 +3,6 @@ package cli
 import (
 	"crypto/ecdh"
 	"encoding/base64"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -11,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/idzoid/cryptozoid/ec"
+	"github.com/idzoid/cryptozoid/pack"
 	"github.com/idzoid/cryptozoid/symmetric"
 )
 
@@ -182,7 +182,7 @@ func (cmd *EcEncryptCommand) Execute(args []string) error {
 		return err
 	}
 
-	secret := fmt.Sprintf("%s:%s", hex.EncodeToString(ciphertext), hex.EncodeToString(nonce))
+	secret := pack.BigEndianCombine(ciphertext, nonce)
 	result := base64.StdEncoding.EncodeToString([]byte(secret))
 
 	fmt.Println(result)
