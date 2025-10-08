@@ -31,7 +31,7 @@ func main() {
 	var opts Options
 
 	parser := flags.NewParser(&opts, flags.Default)
-	parser.AddCommand("ecdh", "Generate ECDH key", "Generate an Eliptic Curve Diffie-Hellman key key", &cli.EcdhCommand{})
+	parser.AddCommand("ec", "Generate ECDH key", "Generate an Eliptic Curve Diffie-Hellman key key", &cli.EcCommand{})
 	parser.AddCommand("info", "Show info", "Show application info", &InfoCommand{})
 
 	_, err := parser.Parse()

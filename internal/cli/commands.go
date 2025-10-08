@@ -1,15 +1,18 @@
 package cli
 
 import (
-	"crypto/ecdh"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/x509"
 	"encoding/base64"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"strings"
 
-	"github.com/idzoid/cryptozoid/ec"
+	"github.com/idzoid/cryptozoid/asymmetric/ec"
 	"github.com/idzoid/cryptozoid/pack"
 	"github.com/idzoid/cryptozoid/symmetric"
 )
@@ -27,26 +30,28 @@ var validCurves = map[string]bool{
 	CurveP521: false,
 }
 
-var keyGens = map[string]func() (*ecdh.PrivateKey, error){
-	CurveP256: ec.GenEcdhP256PrivateKey,
+var keyGens = map[string]func() (*ecdsa.PrivateKey, error){
+	CurveP256: func() (*ecdsa.PrivateKey, error) {
+		return ec.GenerateECDSAKey(elliptic.P256())
+	},
 }
 
-var keymanagerConstructors = map[string]func(priv *ecdh.PrivateKey) ec.EcdhKeyManager{
-	CurveP256: ec.NewEcdhP256KeyManager,
+var keymanagerConstructors = map[string]func(priv *ecdsa.PrivateKey) ec.ECDSAKeyManager{
+	CurveP256: ec.NewECDSAP256KeyManager,
 }
 
-type EcdhCommand struct {
-	Generate EcdhGenCommand     `command:"generate" description:"Generate ECDH Key"`
-	Encrypt  EcdhEncryptCommand `command:"encrypt" description:"Encrypt a value using an ECDH Key"`
-	Decrypt  EcdhDecryptCommand `command:"decrypt" description:"Decrypt a secret using an ECDH Key"`
+type EcCommand struct {
+	Generate EcGenCommand       `command:"generate" description:"Generate ECDSA Key"`
+	Encrypt  EcdhEncryptCommand `command:"encrypt" description:"Encrypt a value using EC Diffie-Hellman"`
+	Decrypt  EcdhDecryptCommand `command:"decrypt" description:"Decrypt a secret using EC Diffie-Hellman"`
 }
 
-type EcdhGenCommand struct {
+type EcGenCommand struct {
 	Curve string `short:"c" long:"curve" description:"Elliptic curve to use (P256, P384, P521)" default:"P256"`
 	Name  string `short:"n" long:"name" description:"Name to be used to generate the Private Key file" default:"ec"`
 }
 
-func (cmd *EcdhGenCommand) Execute(args []string) error {
+func (cmd *EcGenCommand) Execute(args []string) error {
 	if cmd.Curve == "" {
 		cmd.Curve = CurveP256
 	}
@@ -76,7 +81,7 @@ func (cmd *EcdhGenCommand) Execute(args []string) error {
 
 	keymanager := keymanagerConstructor(key)
 
-	privPemBytes, err := keymanager.PrivateKeyToPem()
+	privPemBytes, err := keymanager.KeyToPem()
 	if err != nil {
 		return fmt.Errorf("error generating a %s key: %s", cmd.Curve, err)
 	}
@@ -86,7 +91,7 @@ func (cmd *EcdhGenCommand) Execute(args []string) error {
 		return fmt.Errorf("error generating a %s key: %s", cmd.Curve, err)
 	}
 
-	pubPemBytes, err := keymanager.PublicKeyToPem()
+	pubPemBytes, err := keymanager.PublicToPem()
 	if err != nil {
 		return fmt.Errorf("error generating a %s key: %s", cmd.Curve, err)
 	}
@@ -95,12 +100,12 @@ func (cmd *EcdhGenCommand) Execute(args []string) error {
 		return fmt.Errorf("error generating a %s key: %s", cmd.Curve, err)
 	}
 
-	privBytes, err := keymanager.PrivateKeyBytes()
+	privBytes, err := keymanager.KeyBytes()
 	if err != nil {
 		return fmt.Errorf("error generating a %s key: %s", cmd.Curve, err)
 	}
 
-	pubBytes, err := keymanager.PublicKeyBytes()
+	pubBytes, err := keymanager.PublicBytes()
 	if err != nil {
 		return fmt.Errorf("error generating a %s key: %s", cmd.Curve, err)
 	}
@@ -157,18 +162,33 @@ func (cmd *EcdhEncryptCommand) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
-
-	pk, err := ec.EcdhP256PemToPrivateKey(data)
-	if err != nil {
-		return err
+	block, _ := pem.Decode(data)
+	if block == nil {
+		return errors.New("error decoding PEM data")
 	}
+	key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+	if err != nil {
+		return fmt.Errorf("ivalid PRIVATE KEY format: %s", err)
+	}
+	ecdsaPk, ok := key.(*ecdsa.PrivateKey)
+	if !ok {
+		return fmt.Errorf("the provided key is not ECDSA")
+	}
+	pk, err := ecdsaPk.ECDH()
+	if !ok {
+		return fmt.Errorf("error returning ECDH from ECDSA")
+	}
+
 	curve := strings.ReplaceAll(fmt.Sprintf("%s", pk.Curve()), "-", "")
 	keymanagerConstructor, ok := keymanagerConstructors[curve]
 	if !ok {
 		return fmt.Errorf("key manager for the curve %s was not found", curve)
 	}
 
-	keymanager := keymanagerConstructor(pk)
+	keymanager, err := keymanagerConstructor(ecdsaPk).ECDHKeyManager()
+	if err != nil {
+		return err
+	}
 	sharedSecret, err := keymanager.DeriveSharedSecret(pk.PublicKey())
 	if err != nil {
 		return err
@@ -234,17 +254,33 @@ func (cmd *EcdhDecryptCommand) Execute(args []string) error {
 		return err
 	}
 
-	pk, err := ec.EcdhP256PemToPrivateKey(data)
-	if err != nil {
-		return err
+	block, _ := pem.Decode(data)
+	if block == nil {
+		return errors.New("error decoding PEM data")
 	}
+	key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+	if err != nil {
+		return fmt.Errorf("ivalid PRIVATE KEY format: %s", err)
+	}
+	ecdsaPk, ok := key.(*ecdsa.PrivateKey)
+	if !ok {
+		return fmt.Errorf("the provided key is not ECDSA")
+	}
+	pk, err := ecdsaPk.ECDH()
+	if !ok {
+		return fmt.Errorf("error returning ECDH from ECDSA")
+	}
+
 	curve := strings.ReplaceAll(fmt.Sprintf("%s", pk.Curve()), "-", "")
 	keymanagerConstructor, ok := keymanagerConstructors[curve]
 	if !ok {
 		return fmt.Errorf("key manager for the curve %s was not found", curve)
 	}
 
-	keymanager := keymanagerConstructor(pk)
+	keymanager, err := keymanagerConstructor(ecdsaPk).ECDHKeyManager()
+	if err != nil {
+		return err
+	}
 	sharedSecret, err := keymanager.DeriveSharedSecret(pk.PublicKey())
 	if err != nil {
 		return err
