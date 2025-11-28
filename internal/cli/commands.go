@@ -3,9 +3,7 @@ package cli
 import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
-	"crypto/x509"
 	"encoding/base64"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
@@ -162,20 +160,12 @@ func (cmd *EcdhEncryptCommand) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
-	block, _ := pem.Decode(data)
-	if block == nil {
-		return errors.New("error decoding PEM data")
-	}
-	key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+	ecdsaPk, err := ec.PemToECDSAKey(data)
 	if err != nil {
-		return fmt.Errorf("ivalid PRIVATE KEY format: %s", err)
-	}
-	ecdsaPk, ok := key.(*ecdsa.PrivateKey)
-	if !ok {
-		return fmt.Errorf("the provided key is not ECDSA")
+		return err
 	}
 	pk, err := ecdsaPk.ECDH()
-	if !ok {
+	if err != nil {
 		return fmt.Errorf("error returning ECDH from ECDSA")
 	}
 
@@ -253,21 +243,12 @@ func (cmd *EcdhDecryptCommand) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
-
-	block, _ := pem.Decode(data)
-	if block == nil {
-		return errors.New("error decoding PEM data")
-	}
-	key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+	ecdsaPk, err := ec.PemToECDSAKey(data)
 	if err != nil {
-		return fmt.Errorf("ivalid PRIVATE KEY format: %s", err)
-	}
-	ecdsaPk, ok := key.(*ecdsa.PrivateKey)
-	if !ok {
-		return fmt.Errorf("the provided key is not ECDSA")
+		return err
 	}
 	pk, err := ecdsaPk.ECDH()
-	if !ok {
+	if err != nil {
 		return fmt.Errorf("error returning ECDH from ECDSA")
 	}
 

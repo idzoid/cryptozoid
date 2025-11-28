@@ -73,6 +73,38 @@ func GenerateECDSAKey(curve elliptic.Curve) (*ecdsa.PrivateKey, error) {
 	return priv, nil
 }
 
+func PemToECDSAKey(b []byte) (*ecdsa.PrivateKey, error) {
+	block, _ := pem.Decode(b)
+	if block == nil {
+		return nil, errors.New("failed to decode PEM block")
+	}
+	key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+	if err != nil {
+		return nil, err
+	}
+	pk, ok := key.(*ecdsa.PrivateKey)
+	if !ok {
+		return nil, errors.New("the provided key is not ECDSA")
+	}
+	return pk, nil
+}
+
+func PemToECDSAPublic(b []byte) (*ecdsa.PublicKey, error) {
+	block, _ := pem.Decode(b)
+	if block == nil {
+		return nil, errors.New("failed to decode PEM block")
+	}
+	key, err := x509.ParsePKIXPublicKey(block.Bytes)
+	if err != nil {
+		return nil, err
+	}
+	pk, ok := key.(*ecdsa.PublicKey)
+	if !ok {
+		return nil, errors.New("the provided key is not ECDSA")
+	}
+	return pk, nil
+}
+
 // ECDSAP256KeyManager is a concrete KeyManager implementation for the P-256
 // elliptic curve.
 type ECDSAP256KeyManager struct {
