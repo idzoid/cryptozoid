@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/idzoid/cryptozoid/asymmetric/ec"
@@ -19,7 +21,7 @@ const (
 	CurveP256      = "P256"
 	CurveP384      = "P384"
 	CurveP521      = "P521"
-	DefaultKeyName = "ec_private"
+	DefaultKeyName = "ec"
 )
 
 var validCurves = map[string]bool{
@@ -50,11 +52,13 @@ type EcGenCommand struct {
 }
 
 func (cmd *EcGenCommand) Execute(args []string) error {
-	if cmd.Curve == "" {
+	var err error = nil
+
+	if strings.Trim(cmd.Curve, " ") == "" {
 		cmd.Curve = CurveP256
 	}
-	if cmd.Name == "" {
-		cmd.Curve = DefaultKeyName
+	if strings.Trim(cmd.Name, " ") == "" {
+		cmd.Name = DefaultKeyName
 	}
 	enabled, ok := validCurves[strings.ToUpper(cmd.Curve)]
 	if !ok {
