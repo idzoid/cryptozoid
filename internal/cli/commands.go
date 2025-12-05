@@ -49,6 +49,7 @@ type EcCommand struct {
 type EcGenCommand struct {
 	Curve string `short:"c" long:"curve" description:"Elliptic curve to use (P256, P384, P521)" default:"P256"`
 	Name  string `short:"n" long:"name" description:"Name to be used to generate the Private Key file" default:"ec"`
+	Path  string `short:"p" long:"path" description:"Path where the Private Key file will be created" default:"."`
 }
 
 func (cmd *EcGenCommand) Execute(args []string) error {
@@ -60,6 +61,15 @@ func (cmd *EcGenCommand) Execute(args []string) error {
 	if strings.Trim(cmd.Name, " ") == "" {
 		cmd.Name = DefaultKeyName
 	}
+	if strings.Trim(cmd.Path, " ") == "" {
+		cmd.Path = "."
+	}
+
+	cmd.Path, err = filepath.Abs(cmd.Path)
+	if err != nil {
+		return fmt.Errorf("error resolving path %s: %s", cmd.Path, err)
+	}
+
 	enabled, ok := validCurves[strings.ToUpper(cmd.Curve)]
 	if !ok {
 		return fmt.Errorf("invalid curve: %s. Allowed values (P256, P384, P521)", cmd.Curve)
@@ -88,7 +98,8 @@ func (cmd *EcGenCommand) Execute(args []string) error {
 		return fmt.Errorf("error generating a %s key: %s", cmd.Curve, err)
 	}
 
-	err = os.WriteFile(fmt.Sprintf("%s_private.pem", cmd.Name), privPemBytes, 0600)
+	private_pem_file := path.Join(cmd.Path, fmt.Sprintf("%s_private.pem", cmd.Name))
+	err = os.WriteFile(private_pem_file, privPemBytes, 0600)
 	if err != nil {
 		return fmt.Errorf("error generating a %s key: %s", cmd.Curve, err)
 	}
@@ -97,7 +108,9 @@ func (cmd *EcGenCommand) Execute(args []string) error {
 	if err != nil {
 		return fmt.Errorf("error generating a %s key: %s", cmd.Curve, err)
 	}
-	err = os.WriteFile(fmt.Sprintf("%s_public.pem", cmd.Name), pubPemBytes, 0600)
+
+	public_pem_file := path.Join(cmd.Path, fmt.Sprintf("%s_public.pem", cmd.Name))
+	err = os.WriteFile(public_pem_file, pubPemBytes, 0600)
 	if err != nil {
 		return fmt.Errorf("error generating a %s key: %s", cmd.Curve, err)
 	}
@@ -112,8 +125,10 @@ func (cmd *EcGenCommand) Execute(args []string) error {
 		return fmt.Errorf("error generating a %s key: %s", cmd.Curve, err)
 	}
 
-	fmt.Println("EC key pair generated and saved to ec_private.pem and ec_public.pem")
+	fmt.Println("EC key pair generated.")
+	fmt.Printf("Private key: %s\n", private_pem_file)
 	fmt.Printf("Private Key(bytes): %x\n", privBytes)
+	fmt.Printf("Public key: %s\n", public_pem_file)
 	fmt.Printf("Public Key(bytes): %x\n", pubBytes)
 	fmt.Println("Curve:", keymanager.CurveName())
 	fmt.Println("Private Key Size:", len(privBytes))
