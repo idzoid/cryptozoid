@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/candango/iook/dir"
 	"github.com/idzoid/cryptozoid/asymmetric/ec"
 	"github.com/idzoid/cryptozoid/pack"
 	"github.com/idzoid/cryptozoid/symmetric"
@@ -141,14 +142,61 @@ type EcdhEncryptPositionalArgs struct {
 	Text string `description:"Text to be encrypted"`
 }
 
+type EcdhKeyedCommand struct {
+	Key  string `short:"k" long:"key" description:"Private key file to be used for encryption"`
+	Name string `short:"n" long:"name" description:"Name of the Private Key file to be used for encryption" default:""`
+	Path string `short:"p" long:"path" description:"Path where the Private Key file to be used for encryption is located" default:"."`
+}
+
+func (c EcdhKeyedCommand) ResolveKey() (string, error) {
+	private_pem_file := ""
+	if strings.Trim(c.Key, " ") == "" {
+		c.Key = ""
+	}
+
+	if strings.Trim(c.Name, " ") == "" {
+		c.Name = ""
+	}
+
+	if strings.Trim(c.Path, " ") == "" {
+		c.Path = "."
+	}
+
+	if c.Key == "" && c.Name == "" {
+		return "", errors.New("empty Key file. Please inform either a key(--key) or a key name(--name)")
+	}
+
+	if c.Name != "" {
+		key_path, err := filepath.Abs(c.Path)
+		if err != nil {
+			return "", err
+		}
+
+		ok := dir.Exists(c.Path)
+		if !ok {
+			return "", fmt.Errorf("path(--path) %s does not exists\n", c.Path)
+		}
+
+		private_pem_file = path.Join(key_path,
+			fmt.Sprintf("%s_private.pem", c.Name))
+	}
+
+	if c.Key != "" {
+		private_pem_file = c.Key
+	}
+
+	return private_pem_file, nil
+}
+
 type EcdhEncryptCommand struct {
-	Key  string                    `short:"k" long:"key" description:"Private key file to be used for encryption"`
+	EcdhKeyedCommand
 	Args EcdhEncryptPositionalArgs `positional-args:"yes"`
 }
 
 func (cmd *EcdhEncryptCommand) Execute(args []string) error {
-	if cmd.Key == "" {
-		return errors.New("empty Key file. Please inform the Private Key file to be used")
+	private_pem_file, err := cmd.ResolveKey()
+	if err != nil {
+		return err
 	}
 
 	fi, err := os.Stdin.Stat()
@@ -169,13 +217,13 @@ func (cmd *EcdhEncryptCommand) Execute(args []string) error {
 		return errors.New("empty Text. Please infor a Text to be encryped")
 	}
 
-	_, err = os.Stat(cmd.Key)
+	_, err = os.Stat(private_pem_file)
 
 	if err != nil {
 		return err
 	}
 
-	data, err := os.ReadFile(cmd.Key)
+	data, err := os.ReadFile(private_pem_file)
 	if err != nil {
 		return err
 	}
@@ -225,13 +273,14 @@ type EcdhDecryptPositionalArgs struct {
 }
 
 type EcdhDecryptCommand struct {
-	Key  string                    `short:"k" long:"key" description:"Private key file to be used for decryption"`
+	EcdhKeyedCommand
 	Args EcdhDecryptPositionalArgs `positional-args:"yes"`
 }
 
 func (cmd *EcdhDecryptCommand) Execute(args []string) error {
-	if cmd.Key == "" {
-		return errors.New("empty Key file. Please inform the Private Key file to be used")
+	private_pem_file, err := cmd.ResolveKey()
+	if err != nil {
+		return err
 	}
 
 	fi, err := os.Stdin.Stat()
@@ -252,13 +301,13 @@ func (cmd *EcdhDecryptCommand) Execute(args []string) error {
 		return errors.New("empty Secret. Please infor a Secret to be decrypted")
 	}
 
-	_, err = os.Stat(cmd.Key)
+	_, err = os.Stat(private_pem_file)
 
 	if err != nil {
 		return err
 	}
 
-	data, err := os.ReadFile(cmd.Key)
+	data, err := os.ReadFile(private_pem_file)
 	if err != nil {
 		return err
 	}

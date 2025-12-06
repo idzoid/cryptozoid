@@ -3,8 +3,9 @@ module github.com/idzoid/cryptozoid
 go 1.24
 
 require (
+	github.com/candango/iook v0.0.1
 	github.com/jessevdk/go-flags v1.6.1
-	github.com/stretchr/testify v1.10.0
+	github.com/stretchr/testify v1.11.0
 )
 
 require (
