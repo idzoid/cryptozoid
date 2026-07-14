@@ -68,6 +68,13 @@ func resolveModule(modules ...int) (int, int, error) {
 	return module, len(fmt.Sprintf("%d", module-1)), nil
 }
 
+// CodeWidth returns the number of decimal digits produced by the selected
+// modulus. With no modulus, it returns six for DefaultModule.
+func CodeWidth(modules ...int) (int, error) {
+	_, width, err := resolveModule(modules...)
+	return width, err
+}
+
 // GenerateCodeFromBase32 decodes a Base32 secret and generates the HOTP code
 // for counter. Both padded and unpadded Base32 input are accepted; spaces and
 // lowercase letters are normalized.

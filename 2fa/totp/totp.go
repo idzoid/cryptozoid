@@ -3,10 +3,22 @@
 package totp
 
 import (
+	"crypto/subtle"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/idzoid/cryptozoid/2fa/hotp"
+)
+
+const (
+	// DefaultWindow is the number of adjacent time steps accepted on either
+	// side of the current step by VerifyCode.
+	DefaultWindow = 1
+
+	// MaxWindow bounds verification work and limits abuse through oversized
+	// clock-skew windows.
+	MaxWindow = 10
 )
 
 // TimeStep calculates the TOTP counter for timestamp t, an interval in
@@ -38,6 +50,89 @@ func GenerateCodeFromBase32(secret string, t time.Time,
 		return "", err
 	}
 	return hotp.GenerateCodeFromBase32(secret, counter, modules...)
+}
+
+// VerifyCodeFromBase32 verifies code for secret at t. It accepts the current
+// time step and window adjacent steps on either side of it. The last modulus
+// in modules controls the expected code width; the default is six digits.
+//
+// Verification is intentionally stateless: callers must persist accepted time
+// steps to prevent replay and must apply rate limiting at the application
+// boundary. This function does not log or return the submitted code.
+//
+// It returns an error for invalid secrets, code format, time parameters,
+// modulus, or window values.
+func VerifyCodeFromBase32(secret, code string, t time.Time, interval int64,
+	window int, modules ...int) (bool, error) {
+	if window < 0 || window > MaxWindow {
+		return false, fmt.Errorf("TOTP window must be between 0 and %d", MaxWindow)
+	}
+
+	width, err := hotp.CodeWidth(modules...)
+	if err != nil {
+		return false, err
+	}
+	if err := validateCode(code, width); err != nil {
+		return false, err
+	}
+
+	counter, err := TimeStep(t, interval, time.Unix(0, 0))
+	if err != nil {
+		return false, err
+	}
+
+	matched := 0
+	for offset := -window; offset <= window; offset++ {
+		candidateCounter, ok := offsetCounter(counter, offset)
+		if !ok {
+			continue
+		}
+		candidate, err := hotp.GenerateCodeFromBase32(
+			secret, candidateCounter, modules...)
+		if err != nil {
+			return false, err
+		}
+		matched |= subtle.ConstantTimeCompare([]byte(code), []byte(candidate))
+	}
+
+	return matched == 1, nil
+}
+
+// VerifyCode verifies a six-digit TOTP code using the Unix epoch, the
+// supplied interval, and DefaultWindow.
+//
+// Replay prevention and rate limiting remain the caller's responsibility.
+func VerifyCode(secret, code string, t time.Time, interval int64) (bool, error) {
+	return VerifyCodeFromBase32(
+		secret, code, t, interval, DefaultWindow, hotp.DefaultModule)
+}
+
+func validateCode(code string, width int) error {
+	if len(code) != width {
+		return fmt.Errorf("TOTP code must contain %d digits", width)
+	}
+	for i := range code {
+		if code[i] < '0' || code[i] > '9' {
+			return errors.New("TOTP code must contain only decimal digits")
+		}
+	}
+	return nil
+}
+
+func offsetCounter(counter uint64, offset int) (uint64, bool) {
+	if offset < 0 {
+		distance := uint64(-offset)
+		if distance > counter {
+			return 0, false
+		}
+		return counter - distance, true
+	}
+
+	distance := uint64(offset)
+	if ^uint64(0)-counter < distance {
+		return 0, false
+	}
+	return counter + distance, true
 }
 
 // GenerateCode generates a six-digit TOTP code for secret at t using the
