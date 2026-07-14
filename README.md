@@ -44,6 +44,7 @@ echo "my secret" | cryptozoid ec encrypt --name mykey | cryptozoid ec decrypt --
 ## Documentation
 
 - [CLI Reference](docs/cli.md) — Full command reference for the `cryptozoid` CLI
+- [HOTP and TOTP](docs/2fa.md) — Two-factor code generation, verification, and security boundaries
 - [Go Package Reference](https://pkg.go.dev/github.com/idzoid/cryptozoid) — API docs for using cryptozoid as a library
 
 ## License
