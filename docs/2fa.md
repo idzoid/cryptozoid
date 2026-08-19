@@ -16,6 +16,10 @@ TOTP compatibility. The default TOTP configuration is:
 SHA-256 and SHA-512 selection is planned separately. Do not advertise those
 algorithms in enrollment data until algorithm configuration is implemented.
 
+TOTP epochs are represented in whole Unix seconds. The public `TimeStep` helper
+rejects epochs with sub-second precision; normal timestamps may still include
+sub-second precision because Unix time is evaluated in seconds.
+
 ## Secret handling
 
 Secrets are supplied as Base32 strings. Padded and unpadded Base32 are

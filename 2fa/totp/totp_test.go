@@ -153,3 +153,28 @@ func TestVerifyCodeValidation(t *testing.T) {
 		t.Fatal("expected oversized verification window to return an error")
 	}
 }
+
+func TestTimeStepRejectsFractionalEpoch(t *testing.T) {
+	_, err := TimeStep(
+		time.Unix(30, 0),
+		30,
+		time.Unix(0, 500_000_000),
+	)
+	if err == nil {
+		t.Fatal("expected fractional epoch to return an error")
+	}
+}
+
+func TestTimeStepAcceptsSubsecondTimestamp(t *testing.T) {
+	got, err := TimeStep(
+		time.Unix(30, 500_000_000),
+		30,
+		time.Unix(0, 0),
+	)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got != 1 {
+		t.Fatalf("want step 1, got %d", got)
+	}
+}

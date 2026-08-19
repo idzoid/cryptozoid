@@ -24,10 +24,14 @@ const (
 // TimeStep calculates the TOTP counter for timestamp t, an interval in
 // seconds, and epoch. For standard TOTP, use time.Unix(0, 0) as the epoch.
 //
-// It returns an error when interval is non-positive or t precedes epoch.
+// It returns an error when interval is non-positive, epoch is not aligned
+// to whole seconds, or t precedes epoch.
 func TimeStep(t time.Time, interval int64, epoch time.Time) (uint64, error) {
 	if interval <= 0 {
 		return 0, errors.New("TOTP interval must be positive")
+	}
+	if epoch.Nanosecond() != 0 {
+		return 0, errors.New("TOTP epoch must be aligned to whole seconds")
 	}
 	if t.Before(epoch) {
 		return 0, errors.New("TOTP timestamp must not precede the epoch")
