@@ -1,34 +1,73 @@
 package cli_test
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
+	"github.com/idzoid/cryptozoid/asymmetric/ec"
 	"github.com/idzoid/cryptozoid/internal/cli"
 )
 
-func TestEcEncryptCommand_Execute(t *testing.T) {
+func TestEcGenerateCommandSupportsCurves(t *testing.T) {
 	tests := []struct {
-		name string // description of this test case
-		// Named input parameters for target function.
-		args    []string
-		wantErr bool
+		name  string
+		input string
+		want  string
 	}{
-		// TODO: Add test cases.
+		{name: "P256", input: "P256", want: "P-256"},
+		{name: "P384", input: "p384", want: "P-384"},
+		{name: "P521", input: "P521", want: "P-521"},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// TODO: construct the receiver type.
-			var cmd cli.EcdhEncryptCommand
-			gotErr := cmd.Execute(tt.args)
-			if gotErr != nil {
-				if !tt.wantErr {
-					t.Errorf("Execute() failed: %v", gotErr)
-				}
-				return
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			dir := t.TempDir()
+			cmd := cli.EcGenCommand{
+				Curve: test.input,
+				Name:  "test-key",
+				Path:  dir,
 			}
-			if tt.wantErr {
-				t.Fatal("Execute() succeeded unexpectedly")
+			if err := cmd.Execute(nil); err != nil {
+				t.Fatal(err)
+			}
+
+			privatePath := filepath.Join(dir, "test-key_private.pem")
+			publicPath := filepath.Join(dir, "test-key_public.pem")
+			privateData, err := os.ReadFile(privatePath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			publicData, err := os.ReadFile(publicPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			privateKey, err := ec.PemToECDSAKey(privateData)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := ec.CurveName(privateKey); got != test.want {
+				t.Fatalf("private curve = %q, want %q", got, test.want)
+			}
+			if _, err := ec.PemToECDSAPublic(publicData); err != nil {
+				t.Fatal(err)
+			}
+
+			info, err := os.Stat(privatePath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got, want := info.Mode().Perm(), os.FileMode(0600); got != want {
+				t.Fatalf("private key permissions = %o, want %o", got, want)
 			}
 		})
+	}
+}
+
+func TestEcGenerateCommandRejectsUnsupportedCurve(t *testing.T) {
+	cmd := cli.EcGenCommand{Curve: "P512", Name: "test-key", Path: t.TempDir()}
+	if err := cmd.Execute(nil); err == nil {
+		t.Fatal("expected unsupported curve to return an error")
 	}
 }

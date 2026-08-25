@@ -1,46 +1,110 @@
 package ec
 
 import (
+	"bytes"
 	"crypto/elliptic"
+	"crypto/x509"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
-func TestECDSAKeymanager(t *testing.T) {
+func TestECDSAKeyManagerAcrossCurves(t *testing.T) {
+	tests := []struct {
+		name  string
+		curve elliptic.Curve
+		want  string
+	}{
+		{name: "P256", curve: elliptic.P256(), want: "P-256"},
+		{name: "P384", curve: elliptic.P384(), want: "P-384"},
+		{name: "P521", curve: elliptic.P521(), want: "P-521"},
+	}
 
-	t.Run("Should convert to pem and back to key", func(t *testing.T) {
-		pk, err := GenerateECDSAKey(elliptic.P256())
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			key, err := GenerateECDSAKey(test.curve)
+			if err != nil {
+				t.Fatal(err)
+			}
+			manager := NewECDSAKeyManager(key)
 
-		if err != nil {
-			t.Fatal(err)
-		}
-		km := NewECDSAP256KeyManager(pk)
-		pkBytes, _ := km.KeyBytes()
-		pubBytes, _ := km.KeyBytes()
-		pemPk, err := km.KeyToPem()
-		if err != nil {
-			t.Fatal(err)
-		}
-		pkFromPem, err := km.PemToKey(pemPk)
-		if err != nil {
-			t.Fatal(err)
-		}
-		kmFromPem := NewECDSAP256KeyManager(pkFromPem)
-		pkBytesFromPem, _ := kmFromPem.KeyBytes()
-		pubBytesFromPem, _ := kmFromPem.KeyBytes()
-		assert.Equal(t, pkBytes, pkBytesFromPem)
+			if got := manager.CurveName(); got != test.want {
+				t.Fatalf("CurveName() = %q, want %q", got, test.want)
+			}
 
-		pemPub, err := km.PublicToPem()
-		if err != nil {
-			t.Fatal(err)
-		}
-		pubFromPem, err := km.PemToPublic(pemPub)
-		if err != nil {
-			t.Fatal(err)
-		}
-		assert.Equal(t, pubBytes, pubBytesFromPem)
-		assert.Equal(t, km.Key(), pkFromPem)
-		assert.Equal(t, km.Public(), pubFromPem)
-	})
+			privateBytes, err := manager.KeyBytes()
+			if err != nil {
+				t.Fatal(err)
+			}
+			publicBytes, err := manager.PublicBytes()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			privatePEM, err := manager.KeyToPem()
+			if err != nil {
+				t.Fatal(err)
+			}
+			parsedPrivate, err := manager.PemToKey(privatePEM)
+			if err != nil {
+				t.Fatal(err)
+			}
+			parsedManager := NewECDSAKeyManager(parsedPrivate)
+			parsedPrivateBytes, err := parsedManager.KeyBytes()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal(privateBytes, parsedPrivateBytes) {
+				t.Fatal("private key changed after PEM round trip")
+			}
+
+			publicPEM, err := manager.PublicToPem()
+			if err != nil {
+				t.Fatal(err)
+			}
+			parsedPublic, err := manager.PemToPublic(publicPEM)
+			if err != nil {
+				t.Fatal(err)
+			}
+			parsedPublicBytes, err := x509.MarshalPKIXPublicKey(parsedPublic)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal(publicBytes, parsedPublicBytes) {
+				t.Fatal("public key changed after PEM round trip")
+			}
+		})
+	}
+}
+
+func TestECDSAPemToPrivateKeyAcrossCurves(t *testing.T) {
+	tests := []struct {
+		name  string
+		curve elliptic.Curve
+		want  string
+	}{
+		{name: "P256", curve: elliptic.P256(), want: "P-256"},
+		{name: "P384", curve: elliptic.P384(), want: "P-384"},
+		{name: "P521", curve: elliptic.P521(), want: "P-521"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			key, err := GenerateECDSAKey(test.curve)
+			if err != nil {
+				t.Fatal(err)
+			}
+			manager := NewECDSAKeyManager(key)
+			privatePEM, err := manager.KeyToPem()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			ecdhKey, err := ECDSAPemToPrivateKey(privatePEM)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := ecdhCurveName(ecdhKey.Curve()); got != test.want {
+				t.Fatalf("curve = %q, want %q", got, test.want)
+			}
+		})
+	}
 }

@@ -36,7 +36,7 @@ cryptozoid ec generate [options]
 
 | Flag | Default | Description |
 |---|---|---|
-| `-c`, `--curve` | `P256` | Elliptic curve to use. Supported: `P256` |
+| `-c`, `--curve` | `P256` | Elliptic curve to use. Supported: `P256`, `P384`, `P521` |
 | `-n`, `--name` | `ec` | Base name for the output key files |
 | `-p`, `--path` | `.` | Directory where the key files will be saved |
 
@@ -71,8 +71,8 @@ Private Key Size: 32
 Public Key Size: 65
 ```
 
-> **Note:** Currently only `P256` is enabled. `P384` and `P521` are defined
-> but not yet supported.
+> **Note:** Supported curves are `P256`, `P384`, and `P521`. P-521 is the
+> highest NIST curve in this family; there is no standard P-512 curve.
 
 ---
 

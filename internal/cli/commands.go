@@ -27,18 +27,26 @@ const (
 
 var validCurves = map[string]bool{
 	CurveP256: true,
-	CurveP384: false,
-	CurveP521: false,
+	CurveP384: true,
+	CurveP521: true,
 }
 
 var keyGens = map[string]func() (*ecdsa.PrivateKey, error){
 	CurveP256: func() (*ecdsa.PrivateKey, error) {
 		return ec.GenerateECDSAKey(elliptic.P256())
 	},
+	CurveP384: func() (*ecdsa.PrivateKey, error) {
+		return ec.GenerateECDSAKey(elliptic.P384())
+	},
+	CurveP521: func() (*ecdsa.PrivateKey, error) {
+		return ec.GenerateECDSAKey(elliptic.P521())
+	},
 }
 
 var keymanagerConstructors = map[string]func(priv *ecdsa.PrivateKey) ec.ECDSAKeyManager{
-	CurveP256: ec.NewECDSAP256KeyManager,
+	CurveP256: ec.NewECDSAKeyManager,
+	CurveP384: ec.NewECDSAKeyManager,
+	CurveP521: ec.NewECDSAKeyManager,
 }
 
 type EcCommand struct {
@@ -56,7 +64,8 @@ type EcGenCommand struct {
 func (cmd *EcGenCommand) Execute(args []string) error {
 	var err error = nil
 
-	if strings.Trim(cmd.Curve, " ") == "" {
+	cmd.Curve = strings.ToUpper(strings.TrimSpace(cmd.Curve))
+	if cmd.Curve == "" {
 		cmd.Curve = CurveP256
 	}
 	if strings.Trim(cmd.Name, " ") == "" {
